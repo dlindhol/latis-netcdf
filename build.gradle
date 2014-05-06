@@ -1,0 +1,13 @@
+apply plugin: 'scala'
+
+//Define Java version for generated class files.
+targetCompatibility = 1.6
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(":LaTiS")
+}
+
