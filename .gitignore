@@ -3,3 +3,4 @@
 .cache
 .gradle
 *~
+.settings/gradle
