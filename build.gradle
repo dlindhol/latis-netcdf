@@ -1,5 +1,4 @@
 apply plugin: 'scala'
-apply plugin: 'eclipse'
 
 //Define Java version for generated class files.
 targetCompatibility = 1.6
