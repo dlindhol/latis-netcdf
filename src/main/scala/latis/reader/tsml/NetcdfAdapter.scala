@@ -5,6 +5,7 @@ import latis.data.seq.DataSeq
 import latis.reader.tsml.ml.Tsml
 import ucar.nc2.NetcdfFile
 import ucar.nc2.dataset.NetcdfDataset
+import ucar.nc2.util.EscapeStrings
 
 /**
  * Simple NetCDF file adapter that reads all the variables defined in the TSML
@@ -24,7 +25,11 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     //NetCDF file and put it in the cache.
     for (v <- getOrigScalars) {
       val vname = v.getName
-      val ncvar = ncFile.findVariable(vname)
+      //Some names contain "." which findVariable will interpret as a structure member
+      //NetCDF library dropped NetcdfFile.escapeName between 4.2 and 4.3 so replicate with what it used to do.
+      val escapedName = EscapeStrings.backslashEscape(vname, ".") 
+      //val vname = vname.replaceAll("""\.""", """\\.""")
+      val ncvar = ncFile.findVariable(escapedName)
       val ncarray = ncvar.read
       val n = ncarray.getSize.toInt //TODO: limiting length to int
       val ds = (0 until n).map(ncarray.getObject(_)).map(Data(_)) //Let Data figure out how to store it, assuming primitive type
