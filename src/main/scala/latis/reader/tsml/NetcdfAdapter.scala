@@ -1,5 +1,6 @@
 package latis.reader.tsml
 
+import latis.dm._
 import latis.data.Data
 import latis.data.seq.DataSeq
 import latis.reader.tsml.ml.Tsml
@@ -21,19 +22,34 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     val location = getUrl.toString
     ncFile = NetcdfDataset.openFile(location, null)
     
+    //TODO: capture attributes in metadata
+    
     //For each variable defined in the tsml, read all the data from the 
     //NetCDF file and put it in the cache.
     for (v <- getOrigScalars) {
       val vname = v.getName
       //Some names contain "." which findVariable will interpret as a structure member
       //NetCDF library dropped NetcdfFile.escapeName between 4.2 and 4.3 so replicate with what it used to do.
+      //TODO: replace with "_"?
       val escapedName = EscapeStrings.backslashEscape(vname, ".") 
       //val vname = vname.replaceAll("""\.""", """\\.""")
       val ncvar = ncFile.findVariable(escapedName)
+      
+      //Get data Array from Variable
       val ncarray = ncvar.read
+      //TODO: apply section
+      
       val n = ncarray.getSize.toInt //TODO: limiting length to int
-      val ds = (0 until n).map(ncarray.getObject(_)).map(Data(_)) //Let Data figure out how to store it, assuming primitive type
-      val data = DataSeq(ds)
+      //val ds = (0 until n).map(ncarray.getObject(_)).map(Data(_)) //Let Data figure out how to store it, assuming primitive type
+
+      //Store data based on the type of varible as defined in the tsml
+      val datas = v match {
+        case i: Integer => (0 until n).map(ncarray.getLong(_)).map(Data(_))
+        case r: Real    => (0 until n).map(ncarray.getDouble(_)).map(Data(_))
+        case t: Text    => (0 until n).map(ncarray.getObject(_)).map(o => Data(o.toString))
+      }
+      
+      val data = DataSeq(datas)
       
       cache(vname, data)
     }
