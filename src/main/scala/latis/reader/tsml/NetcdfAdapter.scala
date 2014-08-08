@@ -27,7 +27,12 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     //For each variable defined in the tsml, read all the data from the 
     //NetCDF file and put it in the cache.
     for (v <- getOrigScalars) {
-      val vname = v.getName
+      //use origName if it is defined
+      val vname = v.getMetadata("origName") match {
+        case Some(s) => s
+        case None => v.getName
+      }
+        
       //Some names contain "." which findVariable will interpret as a structure member
       //NetCDF library dropped NetcdfFile.escapeName between 4.2 and 4.3 so replicate with what it used to do.
       //TODO: replace with "_"?
@@ -54,7 +59,7 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
       
       val data = DataSeq(datas)
       
-      cache(vname, data)
+      cache(v.getName, data)
     }
   }
   
