@@ -35,9 +35,12 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
       //val vname = vname.replaceAll("""\.""", """\\.""")
       val ncvar = ncFile.findVariable(escapedName)
       
-      //Get data Array from Variable
-      val ncarray = ncvar.read
-      //TODO: apply section
+      //Get data Array from Variable.
+      //Apply optional 'section' property.
+      val ncarray = v.getMetadata("section") match {
+        case Some(s) => ncvar.read(s).reduce //drop extra dimensions
+        case None    => ncvar.read
+      }
       
       val n = ncarray.getSize.toInt //TODO: limiting length to int
       //val ds = (0 until n).map(ncarray.getObject(_)).map(Data(_)) //Let Data figure out how to store it, assuming primitive type
