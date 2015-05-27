@@ -2,7 +2,7 @@ package latis.reader.tsml
 
 import latis.reader.tsml.ml.Tsml
 import latis.dm._
-import latis.util.MappingIterator
+import latis.util.iterator.MappingIterator
 import latis.data.SampleData
 import latis.data.IterableData
 import java.io.RandomAccessFile
@@ -11,7 +11,7 @@ import java.nio.channels.FileChannel.MapMode
 import latis.data.buffer.ByteBufferData
 import latis.data.SampledData
 import latis.data.seq.DataSeq
-import latis.util.PeekIterator
+import latis.util.iterator.PeekIterator
 import latis.util.DataUtils
 import ucar.nc2.NetcdfFile
 import ucar.nc2.dataset.NetcdfDataset
