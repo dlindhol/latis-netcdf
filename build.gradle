@@ -25,7 +25,6 @@ allprojects {
 	apply plugin: 'eclipse-wtp'
 }
 
-
 //Define Java version for generated class files.
 targetCompatibility = 1.6
 
