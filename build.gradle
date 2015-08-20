@@ -28,7 +28,7 @@ allprojects {
 //Define Java version for generated class files.
 targetCompatibility = 1.6
 
-repositories {    
+repositories {
     maven {
 		url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
     }
@@ -49,7 +49,7 @@ dependencies {
 	testCompile 'junit:junit:4.+'
 }
 
-task wrapper(type: Wrapper) { gradleVersion = '2.3' }
+task wrapper(type: Wrapper) { gradleVersion = '2.6' }
 
 publishing {
 	publications {
@@ -62,4 +62,3 @@ publishing {
 		}
 	}
 }
-
