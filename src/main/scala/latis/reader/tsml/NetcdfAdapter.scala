@@ -18,15 +18,26 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
   //TODO: handle first, last, and limit filter and selections?
   
   private var ncFile: NetcdfFile = null
-
-  def readData(vname: String, section: String = ""): ucar.ma2.Array = {
+  
+  private def getNcVar(name: String): ucar.nc2.Variable = {
     //Some names contain "." which findVariable will interpret as a structure member
     //NetCDF library dropped NetcdfFile.escapeName between 4.2 and 4.3 so replicate with what it used to do.
     //TODO: replace with "_"?
-    val escapedName = EscapeStrings.backslashEscape(vname, ".")
+    val escapedName = EscapeStrings.backslashEscape(name, ".")
     //val vname = vname.replaceAll("""\.""", """\\.""")
-    val ncvar = ncFile.findVariable(escapedName)
+    ncFile.findVariable(escapedName)
+  }
+  
+  private def getScaleFactor(name: String): Double = {
+    val ncvar = getNcVar(name)
+    ncvar.findAttribute("scale_factor") match {
+      case att: ucar.nc2.Attribute => att.getNumericValue.doubleValue
+      case null => 1.0
+    }
+  }
 
+  def readData(vname: String, section: String = ""): ucar.ma2.Array = {
+    val ncvar = getNcVar(vname)
     if (section == "") ncvar.read
     else ncvar.read(section).reduce //drop extra dimensions
   }
@@ -51,6 +62,10 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
         case Some(s) => s
         case None => ""
       }
+      
+      //support scale_factor for reals
+      val scale = getScaleFactor(vname)
+      //TODO: support offset
 
       //Get data Array from Variable.
       //Apply optional 'section' property.
@@ -62,7 +77,7 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
       //Store data based on the type of varible as defined in the tsml
       val datas = v match {
         case i: Integer => (0 until n).map(ncarray.getLong(_)).map(Data(_))
-        case r: Real => (0 until n).map(ncarray.getDouble(_)).map(Data(_))
+        case r: Real => (0 until n).map(ncarray.getDouble(_) * scale).map(Data(_))
         case t: Text => (0 until n).map(ncarray.getObject(_)).map(o => Data(o.toString))
       }
 
