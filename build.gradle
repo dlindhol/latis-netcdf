@@ -6,14 +6,14 @@ buildscript {
 		jcenter()	// for deploy-plugin dependencies
 	}
 	dependencies {
-		classpath 'lasp:deploy-plugin:1.3.0' // http://stash.lasp.colorado.edu/projects/WEBAPPS/repos/gradle-deploy-plugin/browse
+		classpath 'lasp:publishing-plugin:1.1.0' // http://stash.lasp.colorado.edu/projects/WEBAPPS/repos/gradle-publishing-plugin/browse
 		classpath 'lasp:environment-plugin:1.2.0' // http://stash.lasp.colorado.edu/projects/WEBAPPS/repos/gradle-environment-plugin/browse
-		classpath 'lasp:gitflow-plugin:1.4.0' // http://stash.lasp.colorado.edu/projects/WEBAPPS/repos/gradle-gitflow-plugin/browse
+		classpath 'lasp:gitflow-plugin:1.6.0' // http://stash.lasp.colorado.edu/projects/WEBAPPS/repos/gradle-gitflow-plugin/browse
 		classpath 'lasp:utils-plugin:1.1.0' // http://stash.lasp.colorado.edu/projects/WEBAPPS/repos/gradle-utils-plugin/browse
 	}
 }
 
-apply plugin: 'lasp.deploy'
+apply plugin: 'lasp.publishing'
 apply plugin: 'lasp.environment'
 apply plugin: 'lasp.gitflow'
 apply plugin: 'lasp.utils'
@@ -28,7 +28,7 @@ allprojects {
 //Define Java version for generated class files.
 targetCompatibility = 1.6
 
-repositories {    
+repositories {
     maven {
 		url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
     }
@@ -49,14 +49,16 @@ dependencies {
 	testCompile 'junit:junit:4.+'
 }
 
-task wrapper(type: Wrapper) { gradleVersion = '2.3' }
+task wrapper(type: Wrapper) { gradleVersion = '2.6' }
 
-// Affects several tasks: compileScala, compileTestScala, compileSourceSetScala
-// see section "Tasks" in http://gradle.org/docs/current/userguide/scala_plugin.html
-tasks.withType(ScalaCompile) {
-	
-	// build optimization: disabling Ant enables Zinc-based compiler with support for incremental compilation
-	// see section "Incremental Compilation" in http://gradle.org/docs/current/userguide/scala_plugin.html
-	scalaCompileOptions.useAnt = false
+publishing {
+	publications {
+		main(IvyPublication) {
+			organisation 'lasp'
+			module 'latis-netcdf'
+			revision gitflow.getVersion(project).toString()
+
+			from components.java
+		}
+	}
 }
-
