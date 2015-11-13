@@ -44,7 +44,7 @@ dependencies {
 			compile 'lasp:latis:2.10.0'
 		}
 	}
-	compile 'edu.ucar:cdm:4.4.2'
+	compile 'edu.ucar:cdm:4.5.5'
 	compile fileTree(dir: 'lib', include: '*.jar')
 	testCompile 'junit:junit:4.+'
 }
