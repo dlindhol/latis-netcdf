@@ -1,0 +1,1 @@
+./gradlew --settings-file=settings-prod.gradle -Penv=prod "$@"
