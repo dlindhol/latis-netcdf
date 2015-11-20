@@ -25,6 +25,9 @@ lasp.utils.enableIncrementalCompilation(project)
 targetCompatibility = 1.6
 
 repositories {
+    ivy {
+        url "http://dsweb:8080/ivy"
+    }
     maven {
 		url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
     }
