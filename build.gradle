@@ -21,9 +21,6 @@ apply plugin: 'scala'
 
 lasp.utils.enableIncrementalCompilation(project)
 
-//Define Java version for generated class files.
-targetCompatibility = 1.6
-
 repositories {
     ivy {
         url "http://dsweb:8080/ivy"
@@ -47,7 +44,7 @@ dependencies {
 	testCompile 'junit:junit:4.+'
 }
 
-task wrapper(type: Wrapper) { gradleVersion = '2.6' }
+task wrapper(type: Wrapper) { gradleVersion = '2.12' }
 
 publishing {
 	publications {
