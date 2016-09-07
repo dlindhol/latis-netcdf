@@ -30,6 +30,11 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
   
   private def getScaleFactor(name: String): Double = {
     val ncvar = getNcVar(name)
+    if( ncvar == null ) {
+      // a null ncvar will throw an exception in just a sec, so we may as
+      // well replace it with a more helpful error message.
+      throw new RuntimeException("Failed to find ncvar '" + name + "'");
+    }
     ncvar.findAttribute("scale_factor") match {
       case att: ucar.nc2.Attribute => att.getNumericValue.doubleValue
       case null => 1.0
