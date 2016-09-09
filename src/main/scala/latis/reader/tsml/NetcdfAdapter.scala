@@ -28,16 +28,14 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     ncFile.findVariable(escapedName)
   }
   
-  private def getScaleFactor(name: String): Double = {
-    val ncvar = getNcVar(name)
+  private def getScaleFactor(ncvar: ucar.nc2.Variable): Double = {
     ncvar.findAttribute("scale_factor") match {
       case att: ucar.nc2.Attribute => att.getNumericValue.doubleValue
       case null => 1.0
     }
   }
 
-  def readData(vname: String, section: String = ""): ucar.ma2.Array = {
-    val ncvar = getNcVar(vname)
+  def readData(ncvar: ucar.nc2.Variable, section: String = ""): ucar.ma2.Array = {
     if (section == "") ncvar.read
     else ncvar.read(section).reduce //drop extra dimensions
   }
@@ -58,18 +56,25 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
         case None => v.getName
       }
 
+      val ncvar = getNcVar(vname);
+      if(ncvar == null) {
+        // a null ncvar will throw an exception in just a sec, so we may as
+        // well replace it with a more helpful error message.
+        throw new RuntimeException("Failed to find ncvar '" + vname + "'");
+      }
+
       val section = v.getMetadata("section") match {
         case Some(s) => s
         case None => ""
       }
       
       //support scale_factor for reals
-      val scale = getScaleFactor(vname)
+      val scale = getScaleFactor(ncvar)
       //TODO: support offset
 
       //Get data Array from Variable.
       //Apply optional 'section' property.
-      val ncarray = readData(vname, section)
+      val ncarray = readData(ncvar, section)
 
       val n = ncarray.getSize.toInt //TODO: limiting length to int
       //val ds = (0 until n).map(ncarray.getObject(_)).map(Data(_)) //Let Data figure out how to store it, assuming primitive type
