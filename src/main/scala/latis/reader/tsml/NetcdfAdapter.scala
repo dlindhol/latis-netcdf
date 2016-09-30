@@ -35,9 +35,21 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     }
   }
 
-  def readData(ncvar: ucar.nc2.Variable, section: String = ""): ucar.ma2.Array = {
+  private def readData(ncvar: ucar.nc2.Variable, section: String = ""): ucar.ma2.Array = {
     if (section == "") ncvar.read
     else ncvar.read(section).reduce //drop extra dimensions
+  }
+
+  // Note: this method is public mostly so that a subclass of NetcdfAdapter in
+  // Lisird3 can use it.
+  def readData(ncvarName: String): ucar.ma2.Array = {
+    val ncvar = getNcVar(ncvarName)
+    if(ncvar == null) {
+      throw new RuntimeException("Failed to find ncvar '" + ncvarName + "'")
+    }
+    else {
+      return readData(ncvar)
+    }
   }
 
   override def init {
