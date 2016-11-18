@@ -1,7 +1,7 @@
 buildscript {
 	repositories {
 		ivy {
-			url 'http://dsweb:8080/ivy'
+			url 'http://dsweb/ivy'
 		}
 		jcenter()	// for deploy-plugin dependencies
 	}
