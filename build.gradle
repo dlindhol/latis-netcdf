@@ -23,7 +23,7 @@ lasp.utils.enableIncrementalCompilation(project)
 
 repositories {
     ivy {
-        url "http://dsweb:8080/ivy"
+        url "http://dsweb/ivy"
     }
     maven {
 		url 'https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases'
