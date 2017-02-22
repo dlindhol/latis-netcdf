@@ -63,7 +63,8 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     catch {
       case e: FileNotFoundException => {
         // hacky workaround for LISIRDIII-719
-        val basename = location.substring(0, location.lastIndexOf(File.pathSeparator))
+        val path = getUrl.getPath
+        val basename = path.substring(0, path.lastIndexOf(File.separator))
         val baseDir = new File(basename)
         baseDir.listFiles()
 
