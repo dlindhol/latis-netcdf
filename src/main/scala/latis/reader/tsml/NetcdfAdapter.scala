@@ -1,5 +1,7 @@
 package latis.reader.tsml
 
+import java.io.{File, FileNotFoundException}
+
 import latis.dm._
 import latis.data.Data
 import latis.data.seq.DataSeq
@@ -55,7 +57,21 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
   override def init {
     //open the NetCDF file as defined by the location in the tsml.
     val location = getUrl.toString
-    ncFile = NetcdfDataset.openFile(location, null)
+    try {
+      ncFile = NetcdfDataset.openFile(location, null)
+    }
+    catch {
+      case e: FileNotFoundException => {
+        // hacky workaround for LISIRDIII-719
+        val path = getUrl.getPath
+        val basename = path.substring(0, path.lastIndexOf(File.separator))
+        val baseDir = new File(basename)
+        baseDir.listFiles()
+
+        // try to read file one more time. If it throws this time, just let it.
+        ncFile = NetcdfDataset.openFile(location, null)
+      }
+    }
 
     //TODO: capture attributes in metadata
 
