@@ -78,11 +78,10 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     //For each variable defined in the tsml, read all the data from the 
     //NetCDF file and put it in the cache.
     for (v <- getOrigScalars) {
+      val name = v.getName
+
       //use origName if it is defined
-      val vname = v.getMetadata("origName") match {
-        case Some(s) => s
-        case None => v.getName
-      }
+      val vname = tsml.findVariableAttribute(name, "origName").getOrElse(name)
 
       val ncvar = getNcVar(vname);
       if(ncvar == null) {
@@ -91,10 +90,7 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
         throw new RuntimeException("Failed to find ncvar '" + vname + "'");
       }
 
-      val section = v.getMetadata("section") match {
-        case Some(s) => s
-        case None => ""
-      }
+      val section = tsml.findVariableAttribute(name, "section").getOrElse("")
       
       //support scale_factor for reals
       val scale = getScaleFactor(ncvar)
@@ -116,7 +112,7 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
 
       val data = DataSeq(datas)
 
-      cache(v.getName, data)
+      cache(name, data)
     }
   }
 
