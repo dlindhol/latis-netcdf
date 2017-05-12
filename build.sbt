@@ -3,8 +3,11 @@ lazy val `latis-netcdf` = (project in file(".")).
   settings(
     name := "latis-netcdf",
     libraryDependencies ++= Seq(
-      "edu.ucar" % "cdm" % "4.5.5"
-    )
+      "edu.ucar" % "cdm" % "4.5.5",
+      "junit" % "junit" % "4.+" % Test,
+      "com.novocode" % "junit-interface" % "0.11" % Test
+    ),
+    logBuffered in Test := false
   ).
   settings(commonSettings:_*)
 
