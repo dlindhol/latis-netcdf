@@ -44,7 +44,7 @@ dependencies {
 	testCompile 'junit:junit:4.+'
 }
 
-task wrapper(type: Wrapper) { gradleVersion = '2.12' }
+task wrapper(type: Wrapper) { gradleVersion = '3.5' }
 
 publishing {
 	publications {
