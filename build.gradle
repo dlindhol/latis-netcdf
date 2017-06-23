@@ -40,7 +40,7 @@ dependencies {
 			compile 'lasp:latis:2.31.0'
 		}
 	}
-	compile 'edu.ucar:cdm:4.5.5'
+	compile 'edu.ucar:cdm:4.6.10'
 	testCompile 'junit:junit:4.+'
 }
 
