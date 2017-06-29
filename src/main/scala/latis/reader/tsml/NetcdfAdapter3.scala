@@ -115,7 +115,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     }
 
   // Given LaTiS Variable primary name
-  private def getNcVar(vname: String): ucar.nc2.Variable = {
+  private def getNcVar(vname: String): Option[ucar.nc2.Variable] = {
     val name = {
       val oname = tsml.findVariableAttribute(vname, "origName")
       oname.getOrElse(vname)
@@ -127,18 +127,16 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     val escapedName = EscapeStrings.backslashEscape(name, ".")
     val ncvar = ncFile.findVariable(escapedName)
 
-    if (ncvar == null) {
-      throw new RuntimeException("Failed to find ncvar '" + name + "'")
-    }
-
-    ncvar
+    if (ncvar == null) None
+    else Option(ncvar)
   }
 
   // Given LaTiS Variable primary name.
   private def readData(vname: String): Option[ucar.ma2.Array] = {
-    val ncvar = getNcVar(vname)
-    val section = makeSection(vname)
-    section.map(ncvar.read(_).reduce)
+    for {
+      ncvar <- getNcVar(vname)
+      section <- makeSection(vname)
+    } yield ncvar.read(section).reduce
   }
 
   /**
@@ -171,8 +169,8 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
   /**
    * This assumes 1D domains, but it will work if there are more dims of size 1.
    */
-  private def buildIndex(vname: String): Unit =
-    if (! indexMap.isDefinedAt(vname)) {
+  private def buildIndex(vname: String): Unit = getNcVar(vname) match {
+    case Some(ncvar) if (!indexMap.isDefinedAt(vname)) =>
       val read: (ucar.ma2.Array, Int) => Double =
         domainVars.find(_.hasName(vname)) match {
           case Some(t: TimeMl) if t.getType == "text" =>
@@ -182,12 +180,11 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
               val x = arr.getObject(i).toString
               tf.parse(x).toDouble
             }
-          case _ =>
+            case _ =>
             (arr, i) => arr.getDouble(i)
         }
 
       val index: Array[Double] = {
-        val ncvar = getNcVar(vname)
         val ncarray = ncvar.read
 
         val n = ncarray.getSize.toInt
@@ -198,7 +195,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
         arr
       }
       indexMap += vname -> index
-    }
+  }
 
   // Given LaTiS Variable primary name
   private def readIntoCache(vname: String): Unit = {
@@ -240,11 +237,20 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     applyOperations
 
     // Update nested Function length in metadata.
-    //
     // TODO: Reconcile with lengthOfFirstDomainDimension
     val rs = ranges.toSeq.collect {
       case (_, Some(r)) => r.length
-      case (k, None)    => getNcVar(k).getSize.toInt
+      case (k, None)    => getNcVar(k) match {
+        case Some(ncvar) => ncvar.getSize.toInt
+        // If the variable is not in the file, get from the tsml
+        case None => ds.findVariableByName(k) match {
+          case Some(v) => v.getMetadata("length") match {
+            case Some(s) => s.toInt //TODO: parse error
+            case None => ??? //TODO: error: length not defined for derived variable
+          }
+          case None => ??? //TODO: error: variable not in tsml, shouldn't happen
+        }
+      }
     }
     replaceLengthMetadata(ds, rs)
   }
@@ -274,7 +280,10 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
    */
   def lengthOfFirstDomainDimension: Int = ranges.head match {
     // Assumes 1D but will work with extra dims of size 1.
-    case (k, None)        => getNcVar(k).getSize.toInt
+    case (k, None) => getNcVar(k) match {
+      case Some(ncvar) => ncvar.getSize.toInt
+      case None => ??? //first dim can't be derived in tsml for now
+    }
     case (_, Some(range)) => range.length
   }
 
