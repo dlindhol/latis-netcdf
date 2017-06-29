@@ -316,34 +316,40 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
           case (k, Some(v)) => ranges += k -> Option(v compose range)
         }
       case LimitFilter(n) =>
-        val range = new URange(n)
-        ranges.headOption.foreach {
-          case (k, None)    => ranges += k -> Option(range)
-          case (k, Some(v)) => ranges += k -> Option(v compose range)
+        if (n < lengthOfFirstDomainDimension) {
+          val range = new URange(n)
+          ranges.headOption.foreach {
+            case (k, None)    => ranges += k -> Option(range)
+            case (k, Some(v)) => ranges += k -> Option(v compose range)
+          }
         }
       case op: TakeOperation =>
-        val range = new URange(op.n)
-        ranges.headOption.foreach {
-          case (k, None)    => ranges += k -> Option(range)
-          case (k, Some(v)) => ranges += k -> Option(v compose range)
+        if (op.n < lengthOfFirstDomainDimension) {
+          val range = new URange(op.n)
+          ranges.headOption.foreach {
+            case (k, None)    => ranges += k -> Option(range)
+            case (k, Some(v)) => ranges += k -> Option(v compose range)
+          }
         }
       case op: TakeRightOperation =>
-        val range = {
-          val len = lengthOfFirstDomainDimension
-          new URange(len - op.n, op.n)
-        }
-        ranges.headOption.foreach {
-          case (k, None)    => ranges += k -> Option(range)
-          case (k, Some(v)) => ranges += k -> Option(v compose range)
+        val start = lengthOfFirstDomainDimension - op.n
+        if (start > 0) {
+          val range = new URange(start, op.n)
+          ranges.headOption.foreach {
+            case (k, None)    => ranges += k -> Option(range)
+            case (k, Some(v)) => ranges += k -> Option(v compose range)
+          }
         }
       case StrideFilter(n) =>
-        val range = {
-          val len = lengthOfFirstDomainDimension
-          new URange(0, len, n)
-        }
-        ranges.headOption.foreach {
-          case (k, None)    => ranges += k -> Option(range)
-          case (k, Some(v)) => ranges += k -> Option(v compose range)
+        if (n > 1) {
+          val range = {
+            val len = lengthOfFirstDomainDimension
+            new URange(0, len, n)
+          }
+          ranges.headOption.foreach {
+            case (k, None)    => ranges += k -> Option(range)
+            case (k, Some(v)) => ranges += k -> Option(v compose range)
+          }
         }
     }
   }
