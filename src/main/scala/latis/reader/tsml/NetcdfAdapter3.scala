@@ -268,6 +268,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
               Function(f.getDomain, go(g, rs), f.getMetadata),
               ds.getMetadata
             )
+          case _ => ds
         }
     }
   }
