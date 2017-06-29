@@ -28,6 +28,8 @@ import ucar.nc2.util.EscapeStrings
 
 import NetcdfAdapter3._
 import latis.ops.filter._
+import latis.reader.tsml.ml.TupleMl
+import thredds.catalog.ThreddsMetadata.Variables
 
 class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
 
@@ -404,27 +406,20 @@ object NetcdfAdapter3 {
       None
     }
   }
-
+  
   /**
    * Return a sequence of VariableMl corresponding to the domain
-   * variables for this DatasetMl. The sequence is ordered by depth,
-   * so the outer-most domain variable is the first in the Seq.
+   * variables for this DatasetMl. 
    */
   def getDomainVars(ds: DatasetMl): Seq[VariableMl] = {
-    @tailrec
-    def go(f: FunctionMl, acc: Seq[VariableMl]): Seq[VariableMl] = {
-      f.range match {
-        case g: FunctionMl => go(g, f.domain +: acc)
-        case _             => f.domain +: acc
+    def go(vml: VariableMl, acc: Seq[VariableMl]): Seq[VariableMl] = {
+      vml match {
+        case f: FunctionMl => go(f.range, acc :+ f.domain)  //TODO: consider tuple domain
+        case t: TupleMl => t.variables.map(go(_,acc)).flatten
+        case _ => acc
       }
     }
-
-    // getVariableMl will wrap 'time' and 'index' variables in
-    // implicit functions, so we get FunctionMl anyway.
-    val vars = ds.getVariableMl match {
-      case f: FunctionMl => go(f, Seq())
-      case _             => Seq()
-    }
-    vars.reverse
+    
+    go(ds.getVariableMl, Seq.empty)
   }
 }
