@@ -242,7 +242,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     // Update nested Function length in metadata.
     //
     // TODO: Reconcile with lengthOfFirstDomainDimension
-    val rs = ranges.toSeq.tail.collect {
+    val rs = ranges.toSeq.collect {
       case (_, Some(r)) => r.length
       case (k, None)    => getNcVar(k).getSize.toInt
     }
@@ -250,28 +250,21 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
   }
 
   def replaceLengthMetadata(ds: Dataset, rs: Seq[Int]): Dataset = {
-    def go(g: Function, rs: Seq[Int]): Function = {
-      val md = if (rs.head > 0) {
-        g.getMetadata + (("length", s"${rs.head}"))
-      } else {
-        g.getMetadata
-      }
-      g.getRange match {
-        case h: Function => Function(g.getDomain, go(h, rs.tail), md)
-        case range       => Function(g.getDomain, range, md)
-      }
-    }
-
-    ds match {
-      case Dataset(f: Function) =>
-        f.getRange match {
-          case g: Function =>
-            Dataset(
-              Function(f.getDomain, go(g, rs), f.getMetadata),
-              ds.getMetadata
-            )
-          case _ => ds
+    def go(v: Variable, rs: Seq[Int]): Variable = v match {
+      case f: Function => 
+        val md = if (rs.head > 0) {
+          f.getMetadata + ("length", s"${rs.head}")
+        } else {
+          f.getMetadata
         }
+        
+        Function(f.getDomain, go(f.getRange, rs.tail), md)
+      case t @ Tuple(vs) => Tuple(vs.map(v => go(v, rs)), t.getMetadata)
+      case _ => v
+    }
+    
+    ds match {
+      case Dataset(v) => Dataset(go(v, rs), ds.getMetadata)
     }
   }
 
