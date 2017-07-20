@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+  <metadata name="timed_see_xps_diodes_l3a"/>
+  <adapter class="latis.reader.tsml.NetcdfAdapter4"
+           location="/lisird/public/lasp/timed_see/level3a/latest_see_L3A_merged.ncdf"/>
+
+  <time id="date" type="text" origName="DATE" shape="0,time" length="7">
+    <metadata units="yyyyDDD"/>
+  </time>
+  <real id="seconds" origName="TIME" shape="0,time">
+    <metadata units="seconds"/>
+  </real>
+  
+  <real id="diode1" origName="XP_FLUX" shape="0,time,0">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode2" origName="XP_FLUX" shape="0,time,1">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode3" origName="XP_FLUX" shape="0,time,2">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode5" origName="XP_FLUX" shape="0,time,3">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode6" origName="XP_FLUX" shape="0,time,4">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode7" origName="XP_FLUX" shape="0,time,5">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode9" origName="XP_FLUX" shape="0,time,6">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode10" origName="XP_FLUX" shape="0,time,7">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  <real id="diode11" origName="XP_FLUX" shape="0,time,8">
+    <metadata units="W/m^2" missing_value="-1"/>
+  </real>
+  
+  <?convert date,seconds since 1970-01-01?>
+  <?derived time=date+seconds?>
+  <!--?project time, diode1, diode2, diode3, diode5, diode6, diode7, diode9, diode10, diode11?-->
+
+</dataset>
