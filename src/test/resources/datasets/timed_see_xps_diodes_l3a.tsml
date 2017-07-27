@@ -5,7 +5,7 @@
   <adapter class="latis.reader.tsml.NetcdfAdapter4"
            location="/lisird/public/lasp/timed_see/level3a/latest_see_L3A_merged.ncdf"/>
 
-  <time id="date" type="text" origName="DATE" shape="0,time" length="7">
+  <time id="time" type="text" origName="DATE" shape="0,time" length="7">
     <metadata units="yyyyDDD"/>
   </time>
   <real id="seconds" origName="TIME" shape="0,time">
@@ -40,8 +40,8 @@
     <metadata units="W/m^2" missing_value="-1"/>
   </real>
   
-  <?convert date,seconds since 1970-01-01?>
-  <?derived time=date+seconds?>
+  <?convert time,seconds since 1970-01-01?>
+  <?derived time=time+seconds?>
   <!--?project time, diode1, diode2, diode3, diode5, diode6, diode7, diode9, diode10, diode11?-->
 
 </dataset>
