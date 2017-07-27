@@ -1,4 +1,3 @@
-
 import org.junit._
 import Assert._
 
@@ -14,11 +13,9 @@ import latis.ops.TimeFormatter
 import latis.ops.filter.LastFilter
 import latis.ops.Projection
 
-// TODO: This is an excellent candidate for property-based tests.
-
 class TestNetcdfAdapter4 {
   
-  @Test
+  @Test @Ignore //TODO: add assertions
   def nrl2_ssi_P1Y = {
     val reader = TsmlReader2(new URL("file:/home/lindholm/git/latis-netcdf/src/test/resources/datasets/nrl2_ssi_P1Y.tsml"))
     
@@ -37,7 +34,7 @@ class TestNetcdfAdapter4 {
     latis.writer.Writer.fromSuffix("asc").write(ds)
   }
   
-  @Test
+  @Test @Ignore //TODO: add assertions
   def timed_see_ssi_l3 = {
     val reader = TsmlReader2(new URL("file:/home/lindholm/git/latis-netcdf/src/test/resources/datasets/timed_see_ssi_l3.tsml"))
     
@@ -49,7 +46,7 @@ class TestNetcdfAdapter4 {
     latis.writer.Writer.fromSuffix("asc").write(ds)
   }
   
-  @Test
+  @Test @Ignore //need to compute time before indexing (LISIRDIII-922)
   def timed_see_xps_diodes_l3a = {
     val reader = TsmlReader2(new URL("file:/home/lindholm/git/latis-netcdf/src/test/resources/datasets/timed_see_xps_diodes_l3a.tsml"))
     val ops = scala.collection.mutable.ArrayBuffer[Operation]()
