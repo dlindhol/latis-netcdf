@@ -78,14 +78,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     op match {
       case Selection(vname, o, v) if domainVars.exists(_.hasName(vname)) =>
         val newOp = if (vname == "time" && !StringUtils.isNumeric(v)) {
-          // We can get this safely because of the guard.
-          val domainVar = domainVars.find(_.hasName(vname)).get
-          val units = domainVar.getMetadataAttributes.get("units").getOrElse {
-            val msg = "Time variable must have units."
-            throw new UnsupportedOperationException(msg)
-          }
-          val ts = TimeScale(units)
-          val nt = Time.fromIso(v).convert(ts).getValue.toString
+          val nt = convertTime(vname, v)
           new Selection(vname, o, nt)
         } else {
           op
@@ -110,13 +103,29 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
       case _: StrideFilter       =>
         operations += op
         true
-      case NearestNeighborFilter(vname, _)
+      case NearestNeighborFilter(vname, v)
           if domainVars.exists(_.hasName(vname)) =>
-        operations += op
+        val newOp = if (vname == "time" && !StringUtils.isNumeric(v)) {
+          val nt = convertTime(vname, v)
+          new NearestNeighborFilter(vname, nt)
+        } else {
+          op
+        }
+        operations += newOp
         true
       case _                     =>
         false
     }
+
+  private def convertTime(vname: String, value: String): String = {
+    val domainVar = domainVars.find(_.hasName(vname)).get
+    val units = domainVar.getMetadataAttributes.get("units").getOrElse {
+      val msg = "Time variable must have units."
+      throw new UnsupportedOperationException(msg)
+    }
+    val ts = TimeScale(units)
+    Time.fromIso(value).convert(ts).getValue.toString
+  }
 
   // Given LaTiS Variable primary name
   private def getNcVar(vname: String): Option[ucar.nc2.Variable] = {

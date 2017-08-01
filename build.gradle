@@ -37,7 +37,7 @@ dependencies {
 			compile project(":latis")  //LaTiS core for back-end
 		}
 		prod {
-			compile 'lasp:latis:2.38.0'
+			compile 'lasp:latis:2.39.0'
 		}
 	}
 	compile 'edu.ucar:cdm:4.6.10'
