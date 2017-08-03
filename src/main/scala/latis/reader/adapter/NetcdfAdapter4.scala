@@ -1,31 +1,26 @@
-package latis.reader.tsml
+package latis.reader.adapter
 
-import java.io.{File, FileNotFoundException}
+import java.io.File
+import java.io.FileNotFoundException
 
-import scala.annotation.tailrec
 import scala.collection.Searching._
 import scala.collection.mutable
+import scala.collection.mutable.Stack
 
-import latis.dm._
+import NetcdfAdapter4._
 import latis.data.Data
 import latis.data.seq.DataSeq
+import latis.dm._
 import latis.ops.Operation
-import latis.ops.filter.Selection
-import latis.time.Time
-import latis.time.TimeFormat
-import latis.time.TimeScale
+import latis.ops.filter._
+import latis.time._
 import latis.util.StringUtils
-import ucar.ma2.{Range => URange}
+
+import ucar.ma2.{ Range => URange }
 import ucar.ma2.Section
 import ucar.nc2.NetcdfFile
 import ucar.nc2.dataset.NetcdfDataset
 import ucar.nc2.util.EscapeStrings
-
-import NetcdfAdapter4._
-import latis.ops.filter._
-import thredds.catalog.ThreddsMetadata.Variables
-import latis.reader.adapter.Adapter
-import scala.collection.mutable.Stack
 
 class NetcdfAdapter4(model: Model, properties: Map[String, String]) 
   extends Adapter(model, properties) {
@@ -54,10 +49,10 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   /**
    * A map from the name of a variable to the index for that variable.
    */
-  private val indexMap: mutable.Map[String, Array[Double]] =
+  protected val indexMap: mutable.Map[String, Array[Double]] =
     mutable.Map()
 
-  private val operations: mutable.ArrayBuffer[Operation] =
+  protected val operations: mutable.ArrayBuffer[Operation] =
     mutable.ArrayBuffer[Operation]()
 
   /**
@@ -128,7 +123,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   /**
    * Get the NetCDF Variable given a LaTiS Variable name.
    */
-  private def getNcVar(vname: String): Option[ucar.nc2.Variable] = {
+  protected def getNcVar(vname: String): Option[ucar.nc2.Variable] = {
     val name = {
       val oname = model.findVariableAttribute(vname, "origName")
       oname.getOrElse(vname)
@@ -138,14 +133,11 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
     //NetCDF library dropped NetcdfFile.escapeName between 4.2 and 4.3 so replicate with what it used to do.
     //TODO: replace with "_"?
     val escapedName = EscapeStrings.backslashEscape(name, ".")
-    val ncvar = ncFile.findVariable(escapedName)
-
-    if (ncvar == null) None
-    else Option(ncvar)
+    Option(ncFile.findVariable(escapedName))
   }
 
   // Given LaTiS Variable primary name.
-  private def readData(vname: String): Option[ucar.ma2.Array] = {
+  protected def readData(vname: String): Option[ucar.ma2.Array] = {
     for {
       ncvar <- getNcVar(vname)
       section <- makeSection(vname)
@@ -156,7 +148,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
    * Make a Section for a range variable.
    * This assumes that the variable is a function of all domain variables.
    */
-  private def makeSection(vname: String): Option[Section] = {
+  protected def makeSection(vname: String): Option[Section] = {
     val dims = model.findVariableAttribute(vname, "shape") match {
       case Some(s) => s.split(",")
       case None => throw new UnsupportedOperationException("NetCDF variable's 'shape' is not defined.")
@@ -275,7 +267,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   /**
    * Apply each operation to the Range for each domain variable.
    */
-  private def applyOperations: Unit = {
+  protected def applyOperations: Unit = {
     operations.foreach {
       case Selection(vname, op, value) =>
         indexMap.get(vname).foreach { index =>
