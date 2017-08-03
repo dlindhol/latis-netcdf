@@ -3,7 +3,7 @@ import Assert._
 
 import latis.ops.filter.Selection
 import latis.reader.tsml._
-import latis.reader.tsml.NetcdfAdapter4._
+import latis.reader.adapter.NetcdfAdapter4._
 import java.net.URL
 import latis.ops.Operation
 import latis.ops.filter.FirstFilter
@@ -42,18 +42,6 @@ class TestNetcdfAdapter4 {
     ops += FirstFilter()
     ops += Selection("wavelength<5")
     ops += Projection("time,wavelength,irradiance")
-    val ds = reader.getDataset(ops)
-    latis.writer.Writer.fromSuffix("asc").write(ds)
-  }
-  
-  @Test @Ignore //need to compute time before indexing (LISIRDIII-922)
-  def timed_see_xps_diodes_l3a = {
-    val reader = TsmlReader2.fromURL(new URL("file:/home/lindholm/git/latis-netcdf/src/test/resources/datasets/timed_see_xps_diodes_l3a.tsml"))
-    val ops = scala.collection.mutable.ArrayBuffer[Operation]()
-    ops += Selection("time > 2002-01-22T12")
-    ops += TakeOperation(3)
-    //ops += Projection("time,diode9")
-    ops += TimeFormatter("yyyy-MM-dd HH:mm")
     val ds = reader.getDataset(ops)
     latis.writer.Writer.fromSuffix("asc").write(ds)
   }
