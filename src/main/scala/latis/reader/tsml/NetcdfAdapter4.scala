@@ -75,14 +75,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
     op match {
       case Selection(vname, o, v) if domainVars.exists(_.hasName(vname)) =>
         val newOp = if (vname == "time" && !StringUtils.isNumeric(v)) {
-          // We can get this safely because of the guard.
-          val domainVar = domainVars.find(_.hasName(vname)).get
-          val units = domainVar.getMetadata("units").getOrElse {
-            val msg = "Time variable must have units."
-            throw new UnsupportedOperationException(msg)
-          }
-          val ts = TimeScale(units)
-          val nt = Time.fromIso(v).convert(ts).getValue.toString
+          val nt = convertTime(vname, v)
           new Selection(vname, o, nt)
         } else {
           op
@@ -107,10 +100,31 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
       case _: StrideFilter       =>
         operations += op
         true
+      case NearestNeighborFilter(vname, v)
+          if domainVars.exists(_.hasName(vname)) =>
+        val newOp = if (vname == "time" && !StringUtils.isNumeric(v)) {
+          val nt = convertTime(vname, v)
+          new NearestNeighborFilter(vname, nt)
+        } else {
+          op
+        }
+        operations += newOp
+        true
       case _                     =>
         false
     }
-
+    
+  private def convertTime(vname: String, value: String): String = {
+    // We can get this safely because of the guard.
+    val domainVar = domainVars.find(_.hasName(vname)).get
+    val units = domainVar.getMetadata("units").getOrElse {
+      val msg = "Time variable must have units."
+      throw new UnsupportedOperationException(msg)
+    }
+    val ts = TimeScale(units)
+    Time.fromIso(value).convert(ts).getValue.toString
+  }
+    
   /**
    * Get the NetCDF Variable given a LaTiS Variable name.
    */
@@ -179,7 +193,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
               val x = arr.getObject(i).toString
               tf.parse(x).toDouble
             }
-            case _ =>
+          case _ =>
             (arr, i) => arr.getDouble(i)
         }
 
@@ -213,7 +227,8 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
             (0 until n).map(ncarray.getDouble(_)).map(Data(_))
           case Some("text") =>
             (0 until n).map(ncarray.getObject(_)).map(o => Data(o.toString))
-          case Some(s) => throw new RuntimeException(s"Bad type: $s")
+          case Some(s) => throw new RuntimeException(s"Bad type for $vname: $s")
+          case None    => throw new RuntimeException(s"No type defined for $vname")
         }
         cache(vname, DataSeq(datas))
     }
@@ -262,9 +277,9 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
    */
   private def applyOperations: Unit = {
     operations.foreach {
-      case s @ Selection(vname, _, _) =>
+      case Selection(vname, op, value) =>
         indexMap.get(vname).foreach { index =>
-          queryIndex(index, s) match {
+          queryIndex(index, op, value.toDouble) match {
             case None        => ranges += vname -> Option(new URange(0))
             case Some(range) =>
               /*
@@ -272,6 +287,23 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
                * allowed are ones with names that come from the set of
                * domain variables used for these keys) but we can't
                * statically prove this.
+               */
+              ranges.get(vname).foreach {
+                case None    => ranges += vname -> Option(range)
+                case Some(r) => ranges += vname -> Option(r intersect range)
+              }
+          }
+        }
+      case NearestNeighborFilter(vname, value) =>
+        indexMap.get(vname).foreach { index =>
+          queryIndex(index, "~", value.toDouble) match {
+            case None        => ranges += vname -> Option(new URange(0))
+            case Some(range) =>
+              /*
+               * This lookup should never fail (the only
+               * NearestNeighborFilters allowed are ones with names
+               * that come from the set of domain variables used for
+               * these keys) but we can't statically prove this.
                */
               ranges.get(vname).foreach {
                 case None    => ranges += vname -> Option(range)
@@ -337,10 +369,12 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
    * Read all the data into cache using Sections from the Operations.
    */
   override def makeDataset(model: Model): Dataset = {
-    // Build indices for domain variable with Selections.
-    //TODO: make sure we only do domain vars
-    operations.collect { case s: Selection => s }
-      .map(_.vname).distinct.foreach(buildIndex(_))
+    // Build indices for domain variables that have some sort of
+    // selection on them.
+    operations.collect {
+      case Selection(vname, _, _)          => vname
+      case NearestNeighborFilter(vname, _) => vname
+    }.distinct.foreach(buildIndex(_))
 
     // Apply the Operations that we agreed to handle.
     // Build up map of ranges.
@@ -368,28 +402,28 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
 
 object NetcdfAdapter4 {
   // Assuming that the data are ordered in ascending order.
-  def queryIndex(index: Array[Double], s: Selection): Option[URange] = {
+  def queryIndex(index: Array[Double], op: String, v: Double): Option[URange] = {
     val len = index.length
     if (len > 0) {
-      index.search(s.value.toDouble) match {
-        case Found(i) => s.operation match {
-          case ">"  =>
+      index.search(v) match {
+        case Found(i) => op match {
+          case ">"       =>
             if (i+1 < len) {
               Option(new URange(i+1, len-1))
             } else {
               None
             }
-          case ">=" => Option(new URange(i, len-1))
-          case "="  => Option(new URange(i, i))
-          case "<=" => Option(new URange(0, i))
-          case "<"  =>
+          case ">="      => Option(new URange(i, len-1))
+          case "=" | "~" => Option(new URange(i, i))
+          case "<="      => Option(new URange(0, i))
+          case "<"       =>
             if (i-1 >= 0) {
               Option(new URange(0, i-1))
             } else {
               None
             }
         }
-        case InsertionPoint(i) => s.operation match {
+        case InsertionPoint(i) => op match {
           case ">" | ">=" =>
             if (i < len) {
               Option(new URange(i, len-1))
@@ -397,6 +431,34 @@ object NetcdfAdapter4 {
               None
             }
           case "="        => None
+          case "~"        =>
+            if (i == 0) {
+              // i = 0 implies our query is smaller than the smallest
+              // value in the index
+              Option(new URange(0, 0))
+            } else if (i == len) {
+              // i = len implies our query is larger than the largest
+              // value in the index
+              Option(new URange(len-1, len-1))
+            } else {
+              // Here we must determine the value in the index nearest
+              // to the queried value.
+
+              // We've already handled the i = 0 case, so i-1 should
+              // be safe to access.
+              val a = index(i-1)
+              val b = index(i)
+              // a < v < b
+
+              // If v is equidistant from a and b (v - a = b - v), we
+              // will round down. This is to be consistent with the
+              // NearestNeighborInterpolation strategy.
+              if (v - a <= b - v) {
+                Option(new URange(i-1, i-1))
+              } else {
+                Option(new URange(i, i))
+              }
+            }
           case "<" | "<=" =>
             if (i > 0) {
               Option(new URange(0, i-1))

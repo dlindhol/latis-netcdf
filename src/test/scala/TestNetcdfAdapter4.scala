@@ -28,8 +28,8 @@ class TestNetcdfAdapter4 {
     //ops += FirstFilter()
     //ops += LastFilter()
     ops += TakeOperation(3)
-    ops += Selection("wavelength<120")
-    ops += TimeFormatter("yyyy-MM-dd")
+    ops += Selection("wavelength~119.6")
+    ops += TimeFormatter("yyyy")
     val ds = reader.getDataset(ops)
     latis.writer.Writer.fromSuffix("asc").write(ds)
   }
