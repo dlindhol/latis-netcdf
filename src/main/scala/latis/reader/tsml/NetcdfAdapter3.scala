@@ -193,7 +193,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
               val x = arr.getObject(i).toString
               tf.parse(x).toDouble
             }
-            case _ =>
+          case _ =>
             (arr, i) => arr.getDouble(i)
         }
 
