@@ -2,7 +2,7 @@
 
 <dataset>
   <metadata name="timed_see_ssi_l3"/>
-  <adapter class="latis.reader.tsml.NetcdfAdapter4"
+  <adapter class="latis.reader.adapter.NetcdfAdapter4"
            location="/data/public/lisird/lasp/timed_see/level3/latest_see_L3_merged.ncdf"/>
 
  <function>

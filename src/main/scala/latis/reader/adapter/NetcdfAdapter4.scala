@@ -52,7 +52,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   protected val indexMap: mutable.Map[String, Array[Double]] =
     mutable.Map()
 
-  protected val operations: mutable.ArrayBuffer[Operation] =
+  private val operations: mutable.ArrayBuffer[Operation] =
     mutable.ArrayBuffer[Operation]()
 
   /**
@@ -137,7 +137,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   }
 
   // Given LaTiS Variable primary name.
-  protected def readData(vname: String): Option[ucar.ma2.Array] = {
+  private def readData(vname: String): Option[ucar.ma2.Array] = {
     for {
       ncvar <- getNcVar(vname)
       section <- makeSection(vname)
@@ -174,7 +174,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   /**
    * This assumes 1D domains, but it will work if there are more dims of size 1.
    */
-  private def buildIndex(vname: String): Unit = getNcVar(vname) match {
+  protected def buildIndex(vname: String): Unit = getNcVar(vname) match {
     case Some(ncvar) if (!indexMap.isDefinedAt(vname)) =>
       val read: (ucar.ma2.Array, Int) => Double =
         domainVars.find(_.hasName(vname)) match {
@@ -267,7 +267,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   /**
    * Apply each operation to the Range for each domain variable.
    */
-  protected def applyOperations: Unit = {
+  private def applyOperations: Unit = {
     operations.foreach {
       case Selection(vname, op, value) =>
         indexMap.get(vname).foreach { index =>
