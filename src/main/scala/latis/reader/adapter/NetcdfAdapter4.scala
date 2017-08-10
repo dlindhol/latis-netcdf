@@ -58,7 +58,7 @@ class NetcdfAdapter4(model: Model, properties: Map[String, String])
   /**
    * A map from the name of a variable to the range for that variable.
    * Initialize with None to represent a variable that has had no
-   * operations applied to its range and opposed to an empty range
+   * operations applied to its range as opposed to an empty range
    * when an operation eliminates all values for the variable.
    */
   private lazy val ranges: mutable.LinkedHashMap[String, Option[URange]] = {
