@@ -1,38 +1,31 @@
-package latis.reader.tsml
+package latis.reader.adapter
 
-import java.io.{File, FileNotFoundException}
+import java.io.File
+import java.io.FileNotFoundException
 
-import scala.annotation.tailrec
 import scala.collection.Searching._
 import scala.collection.mutable
+import scala.collection.mutable.Stack
 
-import latis.dm._
+import NetcdfAdapter4._
 import latis.data.Data
 import latis.data.seq.DataSeq
+import latis.dm._
 import latis.ops.Operation
-import latis.ops.filter.Selection
-import latis.reader.tsml.ml.Tsml
-import latis.reader.tsml.ml.DatasetMl
-import latis.reader.tsml.ml.FunctionMl
-import latis.reader.tsml.ml.TimeMl
-import latis.reader.tsml.ml.VariableMl
-import latis.time.Time
-import latis.time.TimeFormat
-import latis.time.TimeScale
+import latis.ops.filter._
+import latis.time._
 import latis.util.StringUtils
-import ucar.ma2.{Range => URange}
+
+import ucar.ma2.{ Range => URange }
 import ucar.ma2.Section
 import ucar.nc2.NetcdfFile
 import ucar.nc2.dataset.NetcdfDataset
 import ucar.nc2.util.EscapeStrings
 
-import NetcdfAdapter3._
-import latis.ops.filter._
-import latis.reader.tsml.ml.TupleMl
-import thredds.catalog.ThreddsMetadata.Variables
+class NetcdfAdapter4(model: Model, properties: Map[String, String]) 
+  extends Adapter(model, properties) {
 
-class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
-
+  
   private lazy val ncFile: NetcdfFile = {
     val location = getUrl.toString
     try {
@@ -51,13 +44,12 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     }
   }
 
-  private lazy val domainVars: Seq[VariableMl] =
-    getDomainVars(tsml.dataset)
+  private lazy val domainVars: Seq[VariableType] = model.getDomainVars
 
   /**
    * A map from the name of a variable to the index for that variable.
    */
-  private val indexMap: mutable.Map[String, Array[Double]] =
+  protected val indexMap: mutable.Map[String, Array[Double]] =
     mutable.Map()
 
   private val operations: mutable.ArrayBuffer[Operation] =
@@ -66,12 +58,12 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
   /**
    * A map from the name of a variable to the range for that variable.
    * Initialize with None to represent a variable that has had no
-   * operations applied to its range and opposed to an empty range
+   * operations applied to its range as opposed to an empty range
    * when an operation eliminates all values for the variable.
    */
   private lazy val ranges: mutable.LinkedHashMap[String, Option[URange]] = {
     val zero = mutable.LinkedHashMap[String, Option[URange]]()
-    domainVars.foldLeft(zero)(_ += _.getName -> None)
+    domainVars.foldLeft(zero)(_ += _.getId -> None)
   }
 
   override def handleOperation(op: Operation): Boolean =
@@ -116,21 +108,24 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
       case _                     =>
         false
     }
-
+    
   private def convertTime(vname: String, value: String): String = {
+    // We can get this safely because of the guard.
     val domainVar = domainVars.find(_.hasName(vname)).get
-    val units = domainVar.getMetadataAttributes.get("units").getOrElse {
+    val units = domainVar.getMetadata("units").getOrElse {
       val msg = "Time variable must have units."
       throw new UnsupportedOperationException(msg)
     }
     val ts = TimeScale(units)
     Time.fromIso(value).convert(ts).getValue.toString
   }
-
-  // Given LaTiS Variable primary name
-  private def getNcVar(vname: String): Option[ucar.nc2.Variable] = {
+    
+  /**
+   * Get the NetCDF Variable given a LaTiS Variable name.
+   */
+  protected def getNcVar(vname: String): Option[ucar.nc2.Variable] = {
     val name = {
-      val oname = tsml.findVariableAttribute(vname, "origName")
+      val oname = model.findVariableAttribute(vname, "origName")
       oname.getOrElse(vname)
     }
 
@@ -138,10 +133,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
     //NetCDF library dropped NetcdfFile.escapeName between 4.2 and 4.3 so replicate with what it used to do.
     //TODO: replace with "_"?
     val escapedName = EscapeStrings.backslashEscape(name, ".")
-    val ncvar = ncFile.findVariable(escapedName)
-
-    if (ncvar == null) None
-    else Option(ncvar)
+    Option(ncFile.findVariable(escapedName))
   }
 
   // Given LaTiS Variable primary name.
@@ -156,8 +148,8 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
    * Make a Section for a range variable.
    * This assumes that the variable is a function of all domain variables.
    */
-  private def makeSection(vname: String): Option[Section] = {
-    val dims = tsml.findVariableAttribute(vname, "shape") match {
+  protected def makeSection(vname: String): Option[Section] = {
+    val dims = model.findVariableAttribute(vname, "shape") match {
       case Some(s) => s.split(",")
       case None => throw new UnsupportedOperationException("NetCDF variable's 'shape' is not defined.")
     }
@@ -182,12 +174,12 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
   /**
    * This assumes 1D domains, but it will work if there are more dims of size 1.
    */
-  private def buildIndex(vname: String): Unit = getNcVar(vname) match {
+  protected def buildIndex(vname: String): Unit = getNcVar(vname) match {
     case Some(ncvar) if (!indexMap.isDefinedAt(vname)) =>
       val read: (ucar.ma2.Array, Int) => Double =
         domainVars.find(_.hasName(vname)) match {
-          case Some(t: TimeMl) if t.getType == "text" =>
-            val formatStr = t.getMetadataAttributes.get("units").get
+          case Some(t) if t.getType == "text" =>
+            val formatStr = t.getMetadata("units").get
             val tf = TimeFormat(formatStr)
             (arr, i) => {
               val x = arr.getObject(i).toString
@@ -210,56 +202,38 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
       indexMap += vname -> index
   }
 
-  // Given LaTiS Variable primary name
-  private def readIntoCache(vname: String): Unit = {
+  /**
+   * Read the data for a given LaTiS Variable by its primary name.
+   */
+  protected def readIntoCache(vname: String): Unit = {
     //TODO: apply scale and offset
     readData(vname) match {
       case None          => cache(vname, DataSeq())
       case Some(ncarray) =>
         val n = ncarray.getSize.toInt
         //Store data based on the type of variable
-        val datas = getOrigDataset.findVariableByName(vname) match {
-          case Some(i: Integer) =>
+        val datas = model.findVariableAttribute(vname, "type") match {
+          case Some("integer") =>
             (0 until n).map(ncarray.getLong(_)).map(Data(_))
-          case Some(r: Real) =>
+          case Some("real") =>
             (0 until n).map(ncarray.getDouble(_)).map(Data(_))
-          case Some(t: Text) =>
+          case Some("text") =>
             (0 until n).map(ncarray.getObject(_)).map(o => Data(o.toString))
+          case Some(s) => throw new RuntimeException(s"Bad type for $vname: $s")
+          case None    => throw new RuntimeException(s"No type defined for $vname")
         }
         cache(vname, DataSeq(datas))
     }
   }
 
-  /*
-   * We need to set the "length" of the inner function, which is
-   * defined in the TSML, to the correct value based on the selections
-   * we were given. This requires reading the domain variables from
-   * the NetCDF file and querying our index to figure out how much of
-   * the data we'll actually be reading for the inner function. There
-   * isn't a good mechanism for this at the moment.
-   */
-  override def makeOrigDataset: Dataset = {
-    val ds = super.makeOrigDataset
-
-    // Build indices for domain variables that have some sort of
-    // selection on them.
-    operations.collect {
-      case Selection(vname, _, _)          => vname
-      case NearestNeighborFilter(vname, _) => vname
-    }.distinct.foreach(buildIndex(_))
-
-    // Apply the Operations that we agreed to handle.
-    // Build up map of ranges.
-    applyOperations
-
-    // Update nested Function length in metadata.
-    // TODO: Reconcile with lengthOfFirstDomainDimension
-    val rs = ranges.toSeq.collect {
+  def replaceLengthMetadata(m: Model): Model = {
+    // Collect the length of each Function
+    val rs = Stack() ++ ranges.toSeq.collect {
       case (_, Some(r)) => r.length
       case (k, None)    => getNcVar(k) match {
         case Some(ncvar) => ncvar.getSize.toInt
         // If the variable is not in the file, get from the tsml
-        case None => ds.findVariableByName(k) match {
+        case None => m.findVariableByName(k) match {
           case Some(v) => v.getMetadata("length") match {
             case Some(s) => s.toInt //TODO: parse error
             case None => ??? //TODO: error: length not defined for derived variable
@@ -268,27 +242,14 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
         }
       }
     }
-    replaceLengthMetadata(ds, rs)
-  }
-
-  def replaceLengthMetadata(ds: Dataset, rs: Seq[Int]): Dataset = {
-    def go(v: Variable, rs: Seq[Int]): Variable = v match {
-      case f: Function => 
-        val md = if (rs.head > 0) {
-          f.getMetadata + ("length", s"${rs.head}")
-        } else {
-          f.getMetadata
-        }
-        
-        Function(f.getDomain, go(f.getRange, rs.tail), md)
-      case t @ Tuple(vs) => Tuple(vs.map(v => go(v, rs)), t.getMetadata)
-      case _ => v
-    }
     
-    ds match {
-      case Dataset(v) => Dataset(go(v, rs), ds.getMetadata)
+    m.map {
+      case FunctionType(c,d,id,md) => 
+        FunctionType(c,d,id, md + ("length", s"${rs.pop}"))
+      case vt => vt
     }
   }
+  
 
   /**
    * Get the length of the first domain dimension based on the current
@@ -399,12 +360,39 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
   /**
    * Read all the data into cache using Sections from the Operations.
    */
-  override def init = getOrigScalars.foreach(s => readIntoCache(s.getName))
+  override def makeDataset(model: Model): Dataset = {
+    // Build indices for domain variables that have some sort of
+    // selection on them.
+    operations.collect {
+      case Selection(vname, _, _)          => vname
+      case NearestNeighborFilter(vname, _) => vname
+    }.distinct.foreach(buildIndex(_))
 
+    // Apply the Operations that we agreed to handle.
+    // Build up map of ranges.
+    applyOperations
+/*
+ * TODO: apply derivation before reads to get time
+ * can't apply as Operation until after makeDataset
+ * 
+ * make a i -> (data, seconds) dataset, derive, then join?
+ * back to custom adapter?
+ */
+    
+    // Read the data sections and cache them.
+    model.getScalars.foreach(s => readIntoCache(s.getId))
+
+    // Update nested Function length in metadata.
+    val m2 = replaceLengthMetadata(model)
+    
+    // Delegate to super to make the Dataset.
+    super.makeDataset(m2)
+  }
+  
   def close = ncFile.close
 }
 
-object NetcdfAdapter3 {
+object NetcdfAdapter4 {
   // Assuming that the data are ordered in ascending order.
   def queryIndex(index: Array[Double], op: String, v: Double): Option[URange] = {
     val len = index.length
@@ -475,20 +463,5 @@ object NetcdfAdapter3 {
       None
     }
   }
-  
-  /**
-   * Return a sequence of VariableMl corresponding to the domain
-   * variables for this DatasetMl. 
-   */
-  def getDomainVars(ds: DatasetMl): Seq[VariableMl] = {
-    def go(vml: VariableMl, acc: Seq[VariableMl]): Seq[VariableMl] = {
-      vml match {
-        case f: FunctionMl => go(f.range, acc :+ f.domain)  //TODO: consider tuple domain
-        case t: TupleMl => t.variables.map(go(_,acc)).flatten
-        case _ => acc
-      }
-    }
-    
-    go(ds.getVariableMl, Seq.empty)
-  }
+
 }

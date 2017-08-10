@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+  <metadata name="timed_see_ssi_l3"/>
+  <adapter class="latis.reader.adapter.NetcdfAdapter4"
+           location="/data/public/lisird/lasp/timed_see/level3/latest_see_L3_merged.ncdf"/>
+
+ <function>
+  <time id="time" type="text" origName="DATE" shape="0,time" length="7">
+    <metadata units="yyyyDDD"/>
+  </time>
+  <function id="spectrum" length="195">
+    <real id="wavelength" origName="SP_WAVE" shape="0,wavelength">
+      <metadata units="nm"/>
+    </real>
+    <real id="irradiance" origName="SP_FLUX" shape="0,time,wavelength">
+      <metadata units="W/m^2/nm" missing_value="-1"/>
+    </real>
+    <real id="uncertainty" origName="SP_ERR_TOT" shape="0,time,wavelength">
+      <metadata units="W/m^2/nm" missing_value="-1"/>
+    </real>
+  </function>
+ </function>
+           
+</dataset>
