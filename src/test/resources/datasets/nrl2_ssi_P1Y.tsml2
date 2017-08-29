@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+  <metadata name="nrl2_ssi_P1Y"/>
+  <adapter class="latis.reader.adapter.NetcdfAdapter4"
+           location="/lisird/public/lasp/nrl2/v02r00_ncdc/ssi_v02r00_yearly_s1610_e2016_c20170308.nc"/>
+
+ <function>
+  <time id="time" type="real" shape="time">
+    <metadata units="days since 1610-01-01"/>
+  </time>
+
+  <function id="spectrum" length="3785">
+    <real id="wavelength" shape="wavelength">
+      <metadata units="nm" missing_value="-99.0"/>
+    </real>
+    <real id="irradiance" origName="SSI" shape="time,wavelength">
+      <metadata units="W/m^2/nm" missing_value="-99.0"/>
+    </real>
+  </function>
+ </function>
+
+</dataset>
