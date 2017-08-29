@@ -225,6 +225,7 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
             (0 until n).map(ncarray.getDouble(_)).map(Data(_))
           case Some(t: Text) =>
             (0 until n).map(ncarray.getObject(_)).map(o => Data(o.toString))
+          case _ => ??? //TODO: variable not found or unsupported type
         }
         cache(vname, DataSeq(datas))
     }
