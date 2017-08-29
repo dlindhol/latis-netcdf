@@ -13,12 +13,13 @@ import latis.ops.TimeFormatter
 import latis.ops.filter.LastFilter
 import latis.ops.Projection
 import latis.dm._
+import latis.reader.DatasetAccessor
 
 class TestNetcdfAdapter4 {
   
   @Test
   def nrl2_ssi_P1Y = {
-    val reader = TsmlReader2.fromName("nrl2_ssi_P1Y")
+    val reader = DatasetAccessor.fromName("nrl2_ssi_P1Y")
     
     //val m = reader.model
     //val v = m.findVariableByName("time")
@@ -50,7 +51,7 @@ class TestNetcdfAdapter4 {
   
   @Test
   def timed_see_ssi_l3 = {
-    val reader = TsmlReader2.fromName("timed_see_ssi_l3")
+    val reader = DatasetAccessor.fromName("timed_see_ssi_l3")
     
     val ops = scala.collection.mutable.ArrayBuffer[Operation]()
     ops += FirstFilter()
