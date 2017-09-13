@@ -484,7 +484,11 @@ object NetcdfAdapter3 {
   def getDomainVars(ds: DatasetMl): Seq[VariableMl] = {
     def go(vml: VariableMl, acc: Seq[VariableMl]): Seq[VariableMl] = {
       vml match {
-        case f: FunctionMl => go(f.range, acc :+ f.domain)  //TODO: consider tuple domain
+        case f: FunctionMl => f.domain match {
+          // TODO: I don't think this will work for nested tuples.
+          case t: TupleMl => go(f.range, acc ++ t.variables)
+          case _ => go(f.range, acc :+ f.domain)
+        }
         case t: TupleMl => t.variables.map(go(_,acc)).flatten
         case _ => acc
       }
