@@ -489,7 +489,7 @@ object NetcdfAdapter3 {
           case t: TupleMl => go(f.range, acc ++ t.variables)
           case _ => go(f.range, acc :+ f.domain)
         }
-        case t: TupleMl => t.variables.map(go(_,acc)).flatten
+        case t: TupleMl => acc ++ t.variables.map(go(_, Seq())).flatten
         case _ => acc
       }
     }
