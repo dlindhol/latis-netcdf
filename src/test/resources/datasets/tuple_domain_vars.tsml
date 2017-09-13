@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+  <metadata name="tuple_domain_vars"/>
+  <adapter class=""/>
+
+  <function>
+    <tuple>
+      <real id="a"/>
+      <real id="b"/>
+      <real id="c"/>
+    </tuple>
+
+    <!--
+        Need more than one domain variable to catch the bug identified
+        while working on MVNTD-111.
+    -->
+    <real id="d"/>
+    <real id="e"/>
+  </function>
+
+</dataset>

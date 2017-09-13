@@ -3,6 +3,8 @@ package latis.reader.tsml
 import org.junit._
 import Assert._
 
+import latis.reader.tsml.ml._
+
 import NetcdfAdapter3._
 
 // TODO: This is an excellent candidate for property-based tests.
@@ -277,5 +279,29 @@ class TestNetcdfAdapter3 {
 
     assertTrue(r.isDefined)
     r.foreach(assertEquals(new ucar.ma2.Range(1, 1), _))
+  }
+
+  @Test
+  def ssi_domain_vars = {
+    val ml = Tsml("ssi_domain_vars.tsml").dataset
+    val domainVars = NetcdfAdapter3.getDomainVars(ml)
+
+    val correct = Seq("a", "b")
+    assertEquals(correct.length, domainVars.length)
+    correct.zip(domainVars).foreach {
+      case (a, b) => assertEquals(a, b.getName)
+    }
+  }
+
+  @Test
+  def tuple_domain_vars = {
+    val ml = Tsml("tuple_domain_vars.tsml").dataset
+    val domainVars = NetcdfAdapter3.getDomainVars(ml)
+
+    val correct = Seq("a", "b", "c")
+    assertEquals(correct.length, domainVars.length)
+    correct.zip(domainVars).foreach {
+      case (a, b) => assertEquals(a, b.getName)
+    }
   }
 }
