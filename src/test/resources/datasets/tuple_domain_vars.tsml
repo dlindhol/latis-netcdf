@@ -12,8 +12,9 @@
     </tuple>
 
     <!--
-        Need more than one domain variable to catch the bug identified
-        while working on MVNTD-111.
+        Need more than one range variable to check for the bug that
+        duplicated the set of domain variables for each range
+        variable. (See MVNTD-111.)
     -->
     <real id="d"/>
     <real id="e"/>
