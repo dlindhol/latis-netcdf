@@ -3,7 +3,7 @@ package latis.reader.tsml
 import org.junit._
 import Assert._
 
-import latis.reader.tsml.ml._
+import latis.reader.tsml.ml.Tsml
 
 import NetcdfAdapter3._
 
