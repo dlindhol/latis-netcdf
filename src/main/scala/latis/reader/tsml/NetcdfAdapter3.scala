@@ -240,6 +240,13 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
    * isn't a good mechanism for this at the moment.
    */
   override def makeOrigDataset: Dataset = {
+    // If this adapter is being used in template mode, the path will
+    // contain "..." and otherwise we assume it won't.
+    val location = getUrl.toString
+    if (location.contains("...")) {
+      return super.makeOrigDataset
+    }
+
     val ds = super.makeOrigDataset
 
     // Build indices for domain variables that have some sort of
