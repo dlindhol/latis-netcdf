@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+  <metadata name="ssi_domain_vars"/>
+  <adapter class=""/>
+
+  <time id="a"/>
+
+  <function>
+    <real id="b"/>
+    <real id="c"/>
+  </function>
+
+</dataset>

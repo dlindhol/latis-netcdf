@@ -62,6 +62,7 @@ class NetcdfAdapter(tsml: Tsml) extends TsmlAdapter(tsml) {
     }
     catch {
       case e: FileNotFoundException => {
+        logger.warn("First attempt failed to open " + location)
         // hacky workaround for LISIRDIII-719
         val path = getUrl.getPath
         val basename = path.substring(0, path.lastIndexOf(File.separator))
