@@ -241,6 +241,13 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
    * isn't a good mechanism for this at the moment.
    */
   override def makeOrigDataset: Dataset = {
+    // If this adapter is being used in template mode, the path will
+    // contain "..." and otherwise we assume it won't.
+    val location = getUrl.toString
+    if (location.contains("...")) {
+      return super.makeOrigDataset
+    }
+
     val ds = super.makeOrigDataset
 
     // Build indices for domain variables that have some sort of
@@ -485,8 +492,12 @@ object NetcdfAdapter3 {
   def getDomainVars(ds: DatasetMl): Seq[VariableMl] = {
     def go(vml: VariableMl, acc: Seq[VariableMl]): Seq[VariableMl] = {
       vml match {
-        case f: FunctionMl => go(f.range, acc :+ f.domain)  //TODO: consider tuple domain
-        case t: TupleMl => t.variables.map(go(_,acc)).flatten
+        case f: FunctionMl => f.domain match {
+          // TODO: I don't think this will work for nested tuples.
+          case t: TupleMl => go(f.range, acc ++ t.variables)
+          case _ => go(f.range, acc :+ f.domain)
+        }
+        case t: TupleMl => acc ++ t.variables.map(go(_, Seq())).flatten
         case _ => acc
       }
     }
