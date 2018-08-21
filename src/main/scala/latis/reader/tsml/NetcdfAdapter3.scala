@@ -277,6 +277,18 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
         }
       }
     }
+
+    // This is effectively treating the dataset as though it were
+    // uncurried and limiting the number of samples in the uncurried
+    // dataset.
+    getProperty("limit").foreach { limit =>
+      if (rs.product > limit.toInt) {
+        throw new RuntimeException(
+          s"Limit exceeded: requested ${rs.product}, allowed ${limit.toInt}"
+        )
+      }
+    }
+
     replaceLengthMetadata(ds, rs)
   }
 
