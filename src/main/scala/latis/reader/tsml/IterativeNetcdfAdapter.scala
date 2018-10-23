@@ -24,6 +24,9 @@ import latis.util.StringUtils
 
 import IterativeNetcdfAdapter._
 
+/**
+ * Iterative adapter for a NetCDF file that contains SSI data (time -> wavelength -> irradiance).
+ */
 class IterativeNetcdfAdapter(tsml: Tsml) extends IterativeAdapter2[Map[String, Data]](tsml) {
 
   private lazy val ncFile: NetcdfFile = {
