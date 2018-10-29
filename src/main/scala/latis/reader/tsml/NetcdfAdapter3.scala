@@ -1,55 +1,96 @@
 package latis.reader.tsml
 
-import java.io.{File, FileNotFoundException}
+import java.io.File
+import java.io.FileNotFoundException
+import java.security.cert.X509Certificate
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLProtocolException
+import javax.net.ssl.SSLSession
+import javax.net.ssl.X509TrustManager
 
-import scala.annotation.tailrec
-import scala.collection.Searching._
+import scala.collection.Searching.Found
+import scala.collection.Searching.InsertionPoint
+import scala.collection.Searching.search
 import scala.collection.mutable
 
-import latis.dm._
+import NetcdfAdapter3.getDomainVars
+import NetcdfAdapter3.queryIndex
 import latis.data.Data
 import latis.data.seq.DataSeq
+import latis.dm.Dataset
+import latis.dm.Function
+import latis.dm.Integer
+import latis.dm.Real
+import latis.dm.Text
+import latis.dm.Tuple
+import latis.dm.Variable
 import latis.ops.Operation
+import latis.ops.filter.FirstFilter
+import latis.ops.filter.LastFilter
+import latis.ops.filter.LimitFilter
+import latis.ops.filter.NearestNeighborFilter
 import latis.ops.filter.Selection
-import latis.reader.tsml.ml.Tsml
+import latis.ops.filter.StrideFilter
+import latis.ops.filter.TakeOperation
+import latis.ops.filter.TakeRightOperation
 import latis.reader.tsml.ml.DatasetMl
 import latis.reader.tsml.ml.FunctionMl
 import latis.reader.tsml.ml.TimeMl
+import latis.reader.tsml.ml.Tsml
+import latis.reader.tsml.ml.TupleMl
 import latis.reader.tsml.ml.VariableMl
 import latis.time.Time
 import latis.time.TimeFormat
 import latis.time.TimeScale
 import latis.util.StringUtils
-import ucar.ma2.{Range => URange}
+import ucar.ma2.{ Range => URange }
 import ucar.ma2.Section
 import ucar.nc2.NetcdfFile
 import ucar.nc2.dataset.NetcdfDataset
 import ucar.nc2.util.EscapeStrings
 
-import NetcdfAdapter3._
-import latis.ops.filter._
-import latis.reader.tsml.ml.TupleMl
-import thredds.catalog.ThreddsMetadata.Variables
-
 class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
 
   private lazy val ncFile: NetcdfFile = {
     val location = getUrl.toString
-    try {
-      NetcdfDataset.openFile(location, null)
-    } catch {
-      case e: FileNotFoundException => {
-        logger.warn("First attempt failed to open " + location)
-        // hacky workaround for LISIRDIII-719
-        val path = getUrl.getPath
-        val basename = path.substring(0, path.lastIndexOf(File.separator))
-        val baseDir = new File(basename)
-        baseDir.listFiles()
-
-        // try to read file one more time. If it throws this time, just let it.
-        NetcdfDataset.openFile(location, null)
+    
+    getProperty("trustAllHTTPS") match {
+      case Some(x) if x.equalsIgnoreCase("true") => {
+        try {
+          getUnsecuredHTTPSDataSource
+        } catch {
+          case e: FileNotFoundException => {
+            logger.warn("First attempt failed to open " + location)
+            // hacky workaround for LISIRDIII-719
+            listFiles
+          
+            // try to read file one more time. If it throws this time, just let it.
+            getUnsecuredHTTPSDataSource
+          }
+        }
       }
-    }
+      case _ => {
+        try {
+          NetcdfDataset.openFile(location, null)
+        } catch {
+          case e: FileNotFoundException => {
+            logger.warn("First attempt failed to open " + location)
+            // hacky workaround for LISIRDIII-719
+            listFiles
+    
+            // try to read file one more time. If it throws this time, just let it.
+            NetcdfDataset.openFile(location, null)
+          }
+          case e @ (_ : SSLHandshakeException | _ : SSLProtocolException) => {
+            logger.error(s"HTTPS certificate not recognized. To ignore this, the property 'trustAllHTTPS=true' can be added to your tsml configuration.")
+            throw new RuntimeException("HTTPS certificate not recognized.")
+          }
+        }
+      }
+    }   
   }
 
   private lazy val domainVars: Seq[VariableMl] =
@@ -73,6 +114,16 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
   private lazy val ranges: mutable.LinkedHashMap[String, Option[URange]] = {
     val zero = mutable.LinkedHashMap[String, Option[URange]]()
     domainVars.foldLeft(zero)(_ += _.getName -> None)
+  }
+  
+  /**
+   * Hacky workaround for the "heisenbug"
+   */
+  def listFiles = {
+    val path = getUrl.getPath
+    val basename = path.substring(0, path.lastIndexOf(File.separator))
+    val baseDir = new File(basename)
+    baseDir.listFiles()
   }
 
   override def handleOperation(op: Operation): Boolean =
@@ -422,6 +473,44 @@ class NetcdfAdapter3(tsml: Tsml) extends TsmlAdapter(tsml) {
    */
   override def init = getOrigScalars.foreach(s => readIntoCache(s.getName))
 
+  /*
+   * SECURITY WORKAROUND TO TRUST ALL DATA SERVED BY HTTPS
+   * Achieved by configuring an SSLContext that bypasses the
+   * checkClientTrusted and checkServerTrusted methods.
+   */
+  def getUnsecuredHTTPSDataSource: NetcdfFile = {  
+    //Store the current configurations so that they can later be restored.
+    val sf = HttpsURLConnection.getDefaultSSLSocketFactory
+    val hv = HttpsURLConnection.getDefaultHostnameVerifier
+    
+    //Bypasses both client and server validation.
+    object TrustAll extends X509TrustManager {
+      val getAcceptedIssuers = null
+      def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String) = {}
+      def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String) = {}
+    }
+    //Verifies all host names by simply returning true. An all-permisive trust manager.
+    object VerifyAllHostNames extends HostnameVerifier {
+      def verify(s: String, sslSession: SSLSession) = true
+    }
+
+    //SSL Context initialization and configuration
+    val sslContext = SSLContext.getInstance("SSL")
+    sslContext.init(null, Array(TrustAll), new java.security.SecureRandom())
+    HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory)
+    HttpsURLConnection.setDefaultHostnameVerifier(VerifyAllHostNames)
+    
+    //Actual call
+    val location = getUrl.toString
+    val ncdfFile: NetcdfFile = NetcdfDataset.openFile(location, null)
+    
+    //Reset SSLContext to avoid persisting these changes  
+    HttpsURLConnection.setDefaultSSLSocketFactory(sf)
+    HttpsURLConnection.setDefaultHostnameVerifier(hv)
+    
+    ncdfFile
+  }
+  
   def close = ncFile.close
 }
 
