@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<dataset>
+  <metadata name="simple_time_series"/>
+  <adapter class="latis.reader.tsml.NetcdfAdapter3"
+           location="/tmp/simple_time_series.nc" />
+
+  <time shape="time"/>
+  <real id="a" shape="time"/>
+  <real id="b" shape="time"/>
+
+</dataset>
