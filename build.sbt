@@ -10,6 +10,7 @@ lazy val `latis-netcdf` = (project in file("."))
     name := "latis-netcdf",
     libraryDependencies ++= Seq(
       "io.latis-data" %% "latis" % "2.57.0",
+      "io.latis-data" %% "nujan" % "1.4.4",
       "edu.ucar"      %  "cdm"   % "4.6.10"
     ),
     resolvers += "Unidata" at "https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
