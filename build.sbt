@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.latis-data"
-ThisBuild / scalaVersion := "2.11.8"
+ThisBuild / scalaVersion := "2.12.6"
 
 val artifactory = "http://web-artifacts.lasp.colorado.edu/artifactory/"
 
@@ -9,7 +9,8 @@ lazy val `latis-netcdf` = (project in file("."))
   .settings(
     name := "latis-netcdf",
     libraryDependencies ++= Seq(
-      "io.latis-data" %% "latis" % "2.56.0",
+      "io.latis-data" %% "latis" % "2.57.0",
+      "io.latis-data" %% "nujan" % "1.4.4",
       "edu.ucar"      %  "cdm"   % "4.6.10"
     ),
     resolvers += "Unidata" at "https://artifacts.unidata.ucar.edu/content/repositories/unidata-releases"
@@ -32,7 +33,8 @@ lazy val commonSettings = compilerFlags ++ Seq(
     "Artifactory Release" at artifactory + "sbt-release",
     "Artifactory Snapshot" at artifactory + "sbt-snapshot",
     "Artifactory External" at artifactory + "ext-release-local"
-  )
+  ),
+  crossScalaVersions := Seq("2.11.8", scalaVersion.value)
 )
 
 lazy val compilerFlags = Seq(
@@ -61,5 +63,6 @@ lazy val publishSettings = Seq(
   credentials ++= Seq(
     Path.userHome / ".artifactorycredentials"
   ).filter(_.exists).map(Credentials(_)),
-  releaseVersionBump := sbtrelease.Version.Bump.Minor
+  releaseVersionBump := sbtrelease.Version.Bump.Minor,
+  releaseCrossBuild := true
 )
